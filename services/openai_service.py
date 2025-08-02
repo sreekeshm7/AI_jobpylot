@@ -103,60 +103,71 @@ class OpenAIService:
             raise Exception(f"OpenAI API error: {str(e)}")
     
     def evaluate_summary(self, resume_data: Dict[str, Any]) -> Dict[str, Any]:
-        """Evaluate resume summary with ATS scoring"""
-        prompt = f"""
-        Analyze the following resume data and evaluate the summary section according to the steps below:
+    """Evaluate resume summary with ATS scoring"""
+    prompt = f"""
+You are an expert ATS resume evaluator. Analyze the following resume data and evaluate the 'Summary' section using the steps below.
 
-        Resume Data: {json.dumps(resume_data, indent=2)}
+Resume Data:
+{json.dumps(resume_data, indent=2)}
 
-        **Step 1: Extract Existing Summary**
-        - Extract and display the current "Summary" field from the resume.
+Follow these exact steps:
 
-        **Step 2: Give ATS Score**
-        - Evaluate the extracted Summary and give an ATS score out of 10 based on:
-          - Keyword relevance to the job title
-          - Alignment with skills, experience, education, certifications
-          - Structure and clarity
+**Step 1: Extract Existing Summary**
+- Extract and display the current "Summary" field from the resume.
 
-        **Step 3: Highlight Weak Sentences**
-        - Identify sentences or phrases that reduced the ATS score.
-        - Explain briefly why each one is ineffective.
+**Step 2: Give ATS Score (Out of 10)**
+Evaluate the extracted summary based on the following ATS criteria:
+- Presence of job-specific keywords
+- Alignment with skills, experience, and qualifications in the resume
+- Clarity, professionalism, and sentence structure
+- Overall conciseness and relevance
+Return an integer ATS score (0–10).
 
-        **Step 4: Highlight Strong Sentences**
-        - Identify sentences or phrases that improved the ATS score.
-        - Explain briefly why each one is effective.
+**Step 3: Identify Weak Sentences**
+- List sentences or phrases that are generic, vague, or irrelevant.
+- Briefly explain why each is weak and how it negatively affects the score.
 
-        **Step 5: Score Justification**
-        - Give 2 to 4 bullet points explaining why you gave this score.
+**Step 4: Identify Strong Sentences**
+- List sentences or phrases that boost the score.
+- Explain why they are effective and ATS-friendly.
 
-        **Step 6: Generate 4 New Summaries**
-        - Generate 4 optimized resume summaries that would score 10/10 in an ATS.
-        - Each summary should be under 4 sentences.
+**Step 5: Justify the Score**
+- Give 2–4 bullet points explaining how the score was determined (positive and negative factors).
 
-        Respond in this exact JSON format:
-        {{
-          "extracted_summary": "...",
-          "ats_score": 0,
-          "weak_sentences": ["..."],
-          "strong_sentences": ["..."],
-          "score_feedback": ["...", "..."],
-          "new_summaries": ["...", "...", "...", "..."]
-        }}
-        """
-        
-        try:
-            response = self.client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.3,
-                response_format={"type": "json_object"}
-            )
-            
-            return json.loads(response.choices[0].message.content)
-        except json.JSONDecodeError as e:
-            raise Exception(f"Failed to parse OpenAI response as JSON: {str(e)}")
-        except Exception as e:
-            raise Exception(f"OpenAI API error: {str(e)}")
+**Step 6: Generate 4 Improved Summaries**
+- Write 4 new summary versions that would score 10/10 in ATS.
+- Each version must:
+  - Be fewer than 4 sentences
+  - Include relevant job title keywords
+  - Be tailored to the resume’s actual skills and experience
+  - Replace weak parts with strong, actionable, and specific phrases
+- Ensure every new summary addresses the earlier weaknesses and shows clear improvement.
+
+Return the output in this exact JSON format:
+{{
+  "extracted_summary": "...",
+  "ats_score": 0,
+  "weak_sentences": ["..."],
+  "strong_sentences": ["..."],
+  "score_feedback": ["...", "..."],
+  "new_summaries": ["...", "...", "...", "..."]
+}}
+"""
+
+    try:
+        response = self.client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.3,
+            response_format={"type": "json_object"}
+        )
+
+        return json.loads(response.choices[0].message.content)
+    except json.JSONDecodeError as e:
+        raise Exception(f"Failed to parse OpenAI response as JSON: {str(e)}")
+    except Exception as e:
+        raise Exception(f"OpenAI API error: {str(e)}")
+
     
     def evaluate_section(self, resume_data: Dict[str, Any], section_name: str) -> Dict[str, Any]:
         """Evaluate specific resume section with detailed, targeted prompts"""
@@ -829,3 +840,4 @@ class OpenAIService:
             }}
 
             """
+
