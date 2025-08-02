@@ -101,10 +101,9 @@ class OpenAIService:
             raise Exception(f"Failed to parse OpenAI response as JSON: {str(e)}")
         except Exception as e:
             raise Exception(f"OpenAI API error: {str(e)}")
-    
     def evaluate_summary(self, resume_data: Dict[str, Any]) -> Dict[str, Any]:
-    """Evaluate resume summary with ATS scoring"""
-    prompt = f"""
+        """Evaluate resume summary with ATS scoring"""
+        prompt = f"""
 You are an expert ATS resume evaluator. Analyze the following resume data and evaluate the 'Summary' section using the steps below.
 
 Resume Data:
@@ -154,21 +153,20 @@ Return the output in this exact JSON format:
 }}
 """
 
-    try:
-        response = self.client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.3,
-            response_format={"type": "json_object"}
-        )
+        try:
+            response = self.client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.3,
+                response_format={"type": "json_object"}
+            )
 
-        return json.loads(response.choices[0].message.content)
-    except json.JSONDecodeError as e:
-        raise Exception(f"Failed to parse OpenAI response as JSON: {str(e)}")
-    except Exception as e:
-        raise Exception(f"OpenAI API error: {str(e)}")
+            return json.loads(response.choices[0].message.content)
+        except json.JSONDecodeError as e:
+            raise Exception(f"Failed to parse OpenAI response as JSON: {str(e)}")
+        except Exception as e:
+            raise Exception(f"OpenAI API error: {str(e)}")
 
-    
     def evaluate_section(self, resume_data: Dict[str, Any], section_name: str) -> Dict[str, Any]:
         """Evaluate specific resume section with detailed, targeted prompts"""
         
@@ -189,7 +187,7 @@ Return the output in this exact JSON format:
         except Exception as e:
             raise Exception(f"OpenAI API error: {str(e)}")
 
-    def _get_section_specific_prompt(self, resume_data: Dict[str, Any], section_name: str) -> str:
+def _get_section_specific_prompt(self, resume_data: Dict[str, Any], section_name: str) -> str:
         """Get detailed, section-specific prompts for accurate analysis"""
         
         resume_json = json.dumps(resume_data, indent=2)
@@ -840,4 +838,5 @@ Return the output in this exact JSON format:
             }}
 
             """
+
 
