@@ -101,58 +101,74 @@ class OpenAIService:
             raise Exception(f"Failed to parse OpenAI response as JSON: {str(e)}")
         except Exception as e:
             raise Exception(f"OpenAI API error: {str(e)}")
+
     def evaluate_summary(self, resume_data: Dict[str, Any]) -> Dict[str, Any]:
         """Evaluate resume summary with ATS scoring"""
         prompt = f"""
-You are an expert ATS resume evaluator. Analyze the following resume data and evaluate the 'Summary' section using the steps below.
+You are an elite Applicant Tracking System (ATS) resume evaluator. Your job is to analyze the "Summary" section of a resume and evaluate its effectiveness in helping a candidate pass through automated resume screening for a targeted job.
 
+You must identify what’s strong, what’s weak, and — most importantly — generate dramatically improved summaries that score a perfect 10/10 in real ATS systems used by Fortune 500 companies and top startups.
 Resume Data:
 {json.dumps(resume_data, indent=2)}
 
 Follow these exact steps:
 
 **Step 1: Extract Existing Summary**
-- Extract and display the current "Summary" field from the resume.
+- Extract and display the "Summary" field from the resume exactly as it appears.
 
-**Step 2: Give ATS Score (Out of 10)**
-Evaluate the extracted summary based on the following ATS criteria:
-- Presence of job-specific keywords
-- Alignment with skills, experience, and qualifications in the resume
-- Clarity, professionalism, and sentence structure
-- Overall conciseness and relevance
-Return an integer ATS score (0–10).
+**Step 2: Assign ATS Score (0–10)**
+Evaluate the summary against strict ATS standards:
+- ✅ Job-relevant keyword density
+- ✅ Alignment with resume’s actual skills, tools, experience, and education
+- ✅ Use of strong, actionable language (not vague fluff or buzzwords)
+- ✅ Readability, clarity, and sentence structure
+- ✅ Conciseness (ideally 2–4 powerful sentences)
 
-**Step 3: Identify Weak Sentences**
-- List sentences or phrases that are generic, vague, or irrelevant.
-- Briefly explain why each is weak and how it negatively affects the score.
+**Scoring Guide:**
+- 9–10: Industry-ready, optimized, highly aligned with job and resume
+- 7–8: Good structure and relevance but lacks optimization or key terms
+- 4–6: Has potential but lacks clarity, relevance, or critical alignment
+- 0–3: Poorly written, vague, or fails to align with resume/job requirements
+
+**Step 3: Identify Weak Sentences or Gaps**
+- List vague, generic, or irrelevant phrases that reduce the ATS score.
+- Include brief reasons (e.g., “lacks measurable impact”, “missing keyword for skill”, “unclear phrasing”).
+- Identify any **missing but important content** (e.g., tools, certifications, roles).
 
 **Step 4: Identify Strong Sentences**
-- List sentences or phrases that boost the score.
-- Explain why they are effective and ATS-friendly.
+- Highlight sentences that boost ATS score.
+- Explain *why* they are effective (e.g., "high keyword density", "demonstrates quantifiable impact").
 
-**Step 5: Justify the Score**
-- Give 2–4 bullet points explaining how the score was determined (positive and negative factors).
+**Step 5: Explain Score with Bullet Points**
+Give 3–5 bullets explaining how the score was determined:
+- Include both strengths and weaknesses
+- Be specific (e.g., “Strong use of Python and NLP keywords, but lacks role-specific language like ‘MLOps’ or ‘deployment’”)
 
-**Step 6: Generate 4 Improved Summaries**
-- Write 4 new summary versions that would score 10/10 in ATS.
-- Each version must:
-  - Be fewer than 4 sentences
-  - Include relevant job title keywords
-  - Be tailored to the resume’s actual skills and experience
-  - Replace weak parts with strong, actionable, and specific phrases
-- Ensure every new summary addresses the earlier weaknesses and shows clear improvement.
+**Step 6: Generate 4 Optimized Summaries**
+Write **four brand new summary versions** that are optimized to score a perfect **10/10 in an ATS**.
 
-Return the output in this exact JSON format:
-{{
+Each version must:
+- Be no longer than 4 sentences
+- Be directly based on the actual resume content
+- Include powerful, job-aligned keywords (technical tools, certifications, platforms, frameworks, job titles, etc.)
+- Replace weak or missing parts with impactful, tailored content
+- Vary slightly in tone or structure to offer meaningful options
+
+Do not repeat the original summary or reuse weak elements. Each new version should show **clear, measurable improvements** in clarity, alignment, and keyword use.
+
+---
+
+Respond ONLY in the following JSON format:
+
+{
   "extracted_summary": "...",
   "ats_score": 0,
   "weak_sentences": ["..."],
   "strong_sentences": ["..."],
-  "score_feedback": ["...", "..."],
+  "score_feedback": ["...", "...", "..."],
   "new_summaries": ["...", "...", "...", "..."]
-}}
-"""
-
+}
+        """
         try:
             response = self.client.chat.completions.create(
                 model="gpt-3.5-turbo",
@@ -160,7 +176,6 @@ Return the output in this exact JSON format:
                 temperature=0.3,
                 response_format={"type": "json_object"}
             )
-
             return json.loads(response.choices[0].message.content)
         except json.JSONDecodeError as e:
             raise Exception(f"Failed to parse OpenAI response as JSON: {str(e)}")
@@ -187,13 +202,14 @@ Return the output in this exact JSON format:
         except Exception as e:
             raise Exception(f"OpenAI API error: {str(e)}")
 
-def _get_section_specific_prompt(self, resume_data: Dict[str, Any], section_name: str) -> str:
+    def _get_section_specific_prompt(self, resume_data: Dict[str, Any], section_name: str) -> str:
         """Get detailed, section-specific prompts for accurate analysis"""
         
         resume_json = json.dumps(resume_data, indent=2)
         
         if section_name == "quantifiable_impact":
-            return f"""
+            prompt = f"""
+            return f'''
             You are an expert resume analyst specializing in quantifiable achievements and measurable impact.
 
             Resume Data: {resume_json}
@@ -227,7 +243,7 @@ def _get_section_specific_prompt(self, resume_data: Dict[str, Any], section_name
             """
             
         elif section_name == "date_format":
-            return f"""
+            prompt = f"""
             You are an expert resume analyst specializing in date formatting and chronological consistency.
 
             Resume Data: {resume_json}
@@ -269,7 +285,7 @@ def _get_section_specific_prompt(self, resume_data: Dict[str, Any], section_name
             """
             
         elif section_name == "weak_verbs":
-            return f"""
+            prompt = f"""
             You are an expert resume analyst specializing in action verbs and impactful language usage.
 
             Resume Data: {resume_json}
@@ -316,7 +332,7 @@ def _get_section_specific_prompt(self, resume_data: Dict[str, Any], section_name
             """
             
         elif section_name == "teamwork_collaboration":
-            return f"""
+            prompt = f"""
             You are an expert resume analyst specializing in teamwork and collaboration indicators.
 
             Resume Data: {resume_json}
@@ -359,7 +375,7 @@ def _get_section_specific_prompt(self, resume_data: Dict[str, Any], section_name
             """
             
         elif section_name == "buzzwords_cliches":
-            return f"""
+            prompt = f"""
             You are an expert resume analyst specializing in identifying and eliminating buzzwords, clichés, and overused phrases.
 
             Resume Data: {resume_json}
@@ -402,7 +418,7 @@ def _get_section_specific_prompt(self, resume_data: Dict[str, Any], section_name
             """
             
         elif section_name == "unnecessary_sections":
-            return f"""
+            prompt = f"""
             You are an expert resume analyst specializing in resume structure and section relevance.
 
             Resume Data: {resume_json}
@@ -449,7 +465,7 @@ def _get_section_specific_prompt(self, resume_data: Dict[str, Any], section_name
             """
             
         elif section_name == "contact_details":
-            return f"""
+            prompt = f"""
             You are an expert resume analyst specializing in contact information optimization and professional presentation.
 
             Resume Data: {resume_json}
@@ -502,7 +518,7 @@ def _get_section_specific_prompt(self, resume_data: Dict[str, Any], section_name
             }}
             """
         elif section_name == "grammar_spelling":
-            return f"""
+            prompt = f"""
             You are an expert resume analyst and professional editor specializing in grammar, spelling, and language quality.
 
             Resume Data: {resume_json}
@@ -545,7 +561,7 @@ def _get_section_specific_prompt(self, resume_data: Dict[str, Any], section_name
             """
             
         elif section_name == "formatting_layout":
-            return f"""
+            prompt = f"""
             You are an expert resume analyst specializing in formatting, layout, and visual presentation for ATS compatibility.
 
             Resume Data: {resume_json}
@@ -595,7 +611,7 @@ def _get_section_specific_prompt(self, resume_data: Dict[str, Any], section_name
             """
             
         elif section_name == "ats_keywords":
-            return f"""
+            prompt = f"""
             You are an expert resume analyst specializing in ATS keyword optimization and industry-specific terminology.
 
             Resume Data: {resume_json}
@@ -647,7 +663,7 @@ def _get_section_specific_prompt(self, resume_data: Dict[str, Any], section_name
             """
             
         elif section_name == "skills_relevance":
-            return f"""
+            prompt = f"""
             You are an expert resume analyst specializing in skills assessment and relevance evaluation.
 
             Resume Data: {resume_json}
@@ -807,7 +823,7 @@ def _get_section_specific_prompt(self, resume_data: Dict[str, Any], section_name
             
         else:
             # Default fallback for any other section
-            return f"""
+            prompt = f"""
             You are an expert resume analyst specializing in comprehensive resume evaluation.
 
             Resume Data: {resume_json}
@@ -838,5 +854,7 @@ def _get_section_specific_prompt(self, resume_data: Dict[str, Any], section_name
             }}
 
             """
+        
+        return prompt
 
 
