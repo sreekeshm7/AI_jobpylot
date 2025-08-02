@@ -144,8 +144,19 @@ Give 3–5 bullets explaining how the score was determined:
 - Include both strengths and weaknesses
 - Be specific (e.g., “Strong use of Python and NLP keywords, but lacks role-specific language like ‘MLOps’ or ‘deployment’”)
 
-**Step 6: Generate 4 Optimized Summaries**
-Write **four brand new summary versions** that are optimized to score a perfect **10/10 in an ATS**.
+Step 6: Generate 4 Optimized Resume Summaries
+
+Write four brand-new and distinct resume summary versions, each optimized to score a perfect 10/10 in an ATS (Applicant Tracking System).
+
+Each version must:
+- Reflect the candidate’s actual skills, tools, experience, certifications, and educational background.
+- Use high-impact, job-relevant keywords naturally (e.g., “machine learning”, “Power BI”, “cloud computing”, “data analytics”, “Python”, “MLOps”, etc.).
+- Emphasize results, ownership, and technical or business impact using strong action verbs.
+- Be concise, professional, and clear — maximum 4 sentences per summary.
+- Vary in angle: highlight different strengths across the four (e.g., leadership, technical depth, impact, versatility).
+
+Avoid buzzwords or fluff. Each version should be fully rewritten — not reworded — and crafted to improve ATS ranking and recruiter appeal.
+
 
 Each version must:
 - Be no longer than 4 sentences
@@ -856,5 +867,6 @@ Respond ONLY in the following JSON format:
             """
         
         return prompt
+
 
 
