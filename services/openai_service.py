@@ -1,8 +1,8 @@
 import os
 import json
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, Callable
 
-# Uncomment these if you use openai or other SDK
+# Uncomment if using OpenAI SDK:
 # import openai
 
 class OpenAIService:
@@ -11,24 +11,30 @@ class OpenAIService:
         Initialize with LLM API key. Uses OPENAI_API_KEY from env if not supplied.
         """
         self.api_key = api_key or os.environ.get("OPENAI_API_KEY")
-        # Uncomment for OpenAI
         # openai.api_key = self.api_key
         self.model = "gpt-4o"
 
     def parse_resume_to_json(self, resume_text: str) -> Dict[str, Any]:
         """
-        Parses a resume into a detailed JSON following advanced instructions for maximum extraction.
+        Parse an unstructured resume—extract EVERYTHING. For each section and especially Projects:
+        - For Projects, extract:
+          * All titles, main description/summary, links (live, GitHub etc.)
+          * EVERY sentence about the project (turn paragraphs into bullets if needed)
+          * Action/result/impact sentences even if not formatted as bullets
+          * Full TechStack (from any mention)
+        - For all other sections (WorkExperience/Education): same fidelity; extract every detail and split into most granular JSON.
         """
         prompt = (
-            "Parse the following resume text into JSON, using the exact schema below. "
-            "Pay special attention to the Projects section: "
-            "If bullets are present, use them. If not, extract clear action/result statements from paragraphs as bullets. "
-            "Always extract both the main description (as a paragraph) and a granular bullets array from project narratives, even if only paragraph text is given. "
-            "Never skip tech stack. Always provide everything possible, using lists or empty as per type. "
-            "Do not hallucinate. Return only the JSON object. "
-            "Resume Text:\n"
+            "Extract every detail from the following resume into the JSON format below. "
+            "In the Projects section, capture each project as an object with: Title, short Description (project summary), LiveLink, GitHubLink, StartDate, EndDate, Role. "
+            "ALWAYS include:\n- ALL sentences from paragraphs (as a list of bullets, even if not bullet-formatted)\n"
+            "- Main paragraph description (joined text for summary)\n"
+            "- TechStack (all tools/libraries/skills/tech mentioned for each project)\n"
+            "If explicit bullets exist, use them. Otherwise, split project descriptions into meaningful achievement/action/result sentences as bullets. "
+            "For WorkExperience and Education, extract every sentence or bullet. Fill empty lists if no data. DO NOT hallucinate. Only output the JSON object."
+            "\n\nRESUME TEXT:\n"
             f"{resume_text}\n\n"
-            "SCHEMA:\n"
+            "OUTPUT EXACT FORMAT:\n"
             "{\n"
             '  "resume": {\n'
             '    "Name": "...",\n'
@@ -93,11 +99,9 @@ class OpenAIService:
             "  },\n"
             '  "summary": "A single-paragraph professional summary as above"\n'
             "}\n"
-            "Extract all sentences and all details, and fully parse Projects section even from unstructured text."
+            "All project and experience descriptions must capture every impactful sentence, whether bullet or not."
         )
-
-        # -- Your LLM/LLM API call goes here --
-        # Uncomment and adjust:
+        # Place your LLM call here:
         # response = openai.ChatCompletion.create(
         #     model=self.model,
         #     messages=[{"role": "user", "content": prompt}],
@@ -105,23 +109,19 @@ class OpenAIService:
         #     max_tokens=4096
         # )
         # result_text = response.choices[0].message["content"]
-
         # try:
         #     return json.loads(result_text)
         # except Exception:
-        #     return result_text  # or raise or return {"error": "Parsing failed", ...}
-
-        # For demonstration purposes:
-        raise NotImplementedError("Plug in your own LLM call as annotated above.")
+        #     return result_text
+        raise NotImplementedError("Plug in your own LLM call as per your stack.")
 
     def analyze_resume_section(self, resume_json: Dict[str, Any], section_name: str) -> Dict[str, Any]:
         """
-        Analyzes one resume section or aspect at a time using improved prompts.
+        Analyze one resume section; always recommend the BEST possible ('ideal ATS') rewritten content for that section.
         """
         prompt = self._get_section_specific_prompt(resume_json, section_name)
 
-        # -- Your LLM/LLM API call goes here --
-        # Uncomment and adjust:
+        # Place your LLM call here:
         # response = openai.ChatCompletion.create(
         #     model=self.model,
         #     messages=[{"role": "user", "content": prompt}],
@@ -133,320 +133,134 @@ class OpenAIService:
         #     return json.loads(result_text)
         # except Exception:
         #     return result_text
-
-        # For demonstration purposes:
-        raise NotImplementedError("Plug in your own LLM call as annotated above.")
+        raise NotImplementedError("Plug in your own LLM call as per your stack.")
 
     def _get_section_specific_prompt(self, resume_data: Dict[str, Any], section_name: str) -> str:
         """
-        Improved prompts per section, as in prior completions.
+        For each ATS section, provides a highly tailored evaluation prompt.
+        ALWAYS returns BOTH an objective score/evaluation and the best possible, model-recommended rewrite.
         """
         resume_json = json.dumps(resume_data, indent=2)
-        if section_name == "quantifiable_impact":
-            prompt = f'''
-You are an expert resume analyst with specialization in identifying quantifiable achievements and measurable impact statements.
-Resume Data: {resume_json}
-ANALYSIS TASKS:
-- Identify and extract all statements that include specific numbers, percentages, metrics, or measurable results.
-- Distinguish actual achievements from generic duties.
-- Rate the use of metrics: revenue, time saved, KPIs, etc.
-- For weak statements, suggest how to add quantification and rewrite to highlight impact.
-- Provide at least 3 strong achievement-focused sentence examples tailored to the field.
-- In feedback, highlight both missing opportunities and best practices.
-SCORING:
-- 9–10: Many clear quantified results, strong impact, matches role/industry.
-- 5–8: Some quantification, but inconsistent.
-- 1–4: Little/no quantification.
-Respond ONLY in this JSON:
-{{
-  "section_name": "quantifiable_impact",
-  "ats_score": 0,
-  "feedback": [],
-  "weak_sentences": [],
-  "strong_sentences": [],
-  "improved_content": [],
-  "examples": []
-}}
-'''
-        elif section_name == "date_format":
-            prompt = f'''
-You are an expert in resume chronology and date formatting.
-Resume Data: {resume_json}
-ANALYSIS TASKS:
-- Scrutinize all date fields for format consistency (e.g., MM/YYYY everywhere).
-- Detect any missing, ambiguous, or inconsistent date entries—especially start/end dates in Education/Experience.
-- Flag chronology issues (are most recent entries listed first? Are there gaps?).
-- Check correct use and formatting of "Present"/"Current."
-- Recommend ONE clear, uniform date format to apply everywhere.
-SCORING:
-- 9–10: All dates logical, consistent, nothing missing.
-- 1–4: Major inconsistencies or missing dates.
-Respond ONLY in this JSON:
-{{
-  "section_name": "date_format",
-  "ats_score": 0,
-  "feedback": [],
-  "date_issues": [],
-  "suggested_format": "",
-  "formatting_issues": [],
-  "corrections": []
-}}
-'''
-        elif section_name == "weak_verbs":
-            prompt = f'''
-You are an expert resume language coach focused on action verbs.
-Resume Data: {resume_json}
-ANALYSIS TASKS:
-- Identify every bullet or phrase using weak, passive, or generic verbs (e.g., "helped with," "was responsible for").
-- Suggest aggressive, impactful action verb replacements for each weak instance, tailored to the resume/job function.
-- Provide at least 3 model rewrites showing strong verbs.
-- For feedback, contrast before/after and explain why verb strength matters.
-SCORING:
-- 9–10: Strong, varied verbs throughout.
-- 1–4: Excessive weak verbs.
-Respond ONLY in this JSON:
-{{
-  "section_name": "weak_verbs",
-  "ats_score": 0,
-  "feedback": [],
-  "weak_sentences": [],
-  "strong_sentences": [],
-  "improved_content": [],
-  "examples": []
-}}
-'''
-        elif section_name == "teamwork_collaboration":
-            prompt = f'''
-You are a resume evaluator with expertise in teamwork, collaboration, and cross-functional skills.
-Resume Data: {resume_json}
-ANALYSIS TASKS:
-- Find all examples of teamwork: group accomplishments, collaboration, leadership.
-- Suggest improvements for solo- or vague-sounding statements.
-- Highlight best sentences/sections that show collaboration.
-SCORING:
-- 9–10: Ample, specific teamwork evidence.
-- 1–4: Very little teamwork shown.
-Respond ONLY in this JSON:
-{{
-  "section_name": "teamwork_collaboration",
-  "ats_score": 0,
-  "feedback": [],
-  "weak_sentences": [],
-  "strong_sentences": [],
-  "improved_content": [],
-  "examples": []
-}}
-'''
-        elif section_name == "buzzwords_cliches":
-            prompt = f'''
-You are a resume expert specializing in language specificity and avoidance of clichés.
-Resume Data: {resume_json}
-ANALYSIS TASKS:
-- Flag all buzzwords or clichés (e.g., dynamic, results-driven).
-- For each, recommend concrete rewrites, or removal if fluff.
-- Provide at least 3 examples of better alternatives for the field.
-SCORING:
-- 9–10: Direct, evidence-based language only.
-- 1–4: Major buzzword/cliché problem.
-Respond ONLY in this JSON:
-{{
-  "section_name": "buzzwords_cliches",
-  "ats_score": 0,
-  "feedback": [],
-  "issues_found": [],
-  "corrections": [],
-  "improved_content": [],
-  "examples": []
-}}
-'''
-        elif section_name == "unnecessary_sections":
-            prompt = f'''
-You are an expert in resume structure and relevance.
-Resume Data: {resume_json}
-ANALYSIS TASKS:
-- Evaluate if each section (Hobbies, References, etc.) adds job-relevant value.
-- Flag outdated, irrelevant, redundant, or missing sections.
-- Suggest best order/organization for maximum recruiter impact.
-SCORING:
-- 9–10: All sections add value and are relevant.
-- 1–4: Contains fluff, missing essentials, poor order.
-Respond ONLY in this JSON:
-{{
-  "section_name": "unnecessary_sections",
-  "ats_score": 0,
-  "feedback": [],
-  "issues_found": [],
-  "missing_information": [],
-  "recommendations": []
-}}
-'''
-        elif section_name == "contact_details":
-            prompt = f'''
-You are a professional resume auditor focusing on contact details.
-Resume Data: {resume_json}
-ANALYSIS TASKS:
-- Check for presence, correctness, professionalism in: Name, Email, Phone, LinkedIn, Portfolio/GitHub, Location (not full address).
-- Flag incomplete, unprofessional, or unsafe contact info.
-- Suggest correct best-practice format for each.
-SCORING:
-- 9–10: Fully complete and professional.
-- 1–4: Missing essentials/unprofessional.
-Respond ONLY in this JSON:
-{{
-  "section_name": "contact_details",
-  "ats_score": 0,
-  "feedback": [],
-  "contact_completeness": {{"email": false, "phone": false, "linkedin": false, "github": false, "portfolio": false, "location": false}},
-  "issues_found": [],
-  "recommendations": []
-}}
-'''
-        elif section_name == "grammar_spelling":
-            prompt = f'''
-You are a senior editor auditing grammar, spelling, and language quality.
-Resume Data: {resume_json}
-ANALYSIS TASKS:
-- Detect grammar, spelling, punctuation, capitalization errors everywhere.
-- Spot tense inconsistencies, incomplete/awkward sentences, bullet punctuation.
-- Provide direct corrections for every issue, and 3+ improved/rewritten examples.
-SCORING:
-- 9–10: Flawless grammar/spelling.
-- 1–4: Frequent/serious errors.
-Respond ONLY in this JSON:
-{{
-  "section_name": "grammar_spelling",
-  "ats_score": 0,
-  "feedback": [],
-  "grammar_errors": [],
-  "spelling_errors": [],
-  "corrections": [],
-  "improved_content": []
-}}
-'''
-        elif section_name == "formatting_layout":
-            prompt = f'''
-You are a specialist in resume formatting and ATS compatibility.
-Resume Data: {resume_json}
-ANALYSIS TASKS:
-- Ensure all sections are logically ordered and separated.
-- Review date format, bullets, spacing, ATS compatibility.
-- Suggest specific formatting improvements.
-SCORING:
-- 9–10: Clean, professional, ATS-friendly.
-- 1–4: Disorganized/problematic.
-Respond ONLY in this JSON:
-{{
-  "section_name": "formatting_layout",
-  "ats_score": 0,
-  "feedback": [],
-  "formatting_issues": [],
-  "recommendations": [],
-  "examples": []
-}}
-'''
-        elif section_name == "ats_keywords":
-            prompt = f'''
-You are an ATS optimization specialist focused on keyword coverage.
-Resume Data: {resume_json}
-ANALYSIS TASKS:
-- List hard/soft skill keywords present and missing for the target role/field.
-- Suggest where to integrate missing or stronger keywords.
-- Give 3+ example sentences with optimal keyword density/context.
-SCORING:
-- 9–10: Rich, targeted keywords used contextually.
-- 1–4: Major gaps or generic phrasing.
-Respond ONLY in this JSON:
-{{
-  "section_name": "ats_keywords",
-  "ats_score": 0,
-  "feedback": [],
-  "missing_keywords": [],
-  "relevant_keywords": [],
-  "recommendations": [],
-  "improved_content": []
-}}
-'''
-        elif section_name == "skills_relevance":
-            prompt = f'''
-You are a skills analyst evaluating skills section completeness/relevance.
-Resume Data: {resume_json}
-ANALYSIS TASKS:
-- Assess for missing/irrelevant/outdated skills, organization, grouping.
-- Suggest improvements (clarity, logic, impact).
-- Provide examples for better grouping/language.
-SCORING:
-- 9–10: Well-organized, comprehensive, current.
-- 1–4: Incomplete, poorly organized, irrelevant items.
-Respond ONLY in this JSON:
-{{
-  "section_name": "skills_relevance",
-  "ats_score": 0,
-  "feedback": [],
-  "issues_found": [],
-  "missing_information": [],
-  "recommendations": [],
-  "improved_content": []
-}}
-'''
-        elif section_name == "achievements_vs_responsibilities":
-            prompt = f'''
-You are an expert distinguishing achievements from responsibilities in resumes.
-Resume Data: {resume_json}
-ANALYSIS TASKS:
-- Separate achievement-focused from responsibility-only statements.
-- Transform duties into results/impact; give 3+ before/after examples.
-- List best/weakest examples and rewrites.
-- Tips for proper balance.
-SCORING:
-- 9–10: Mostly achievement-driven.
-- 1–4: Mostly just responsibilities.
-Respond ONLY in this JSON:
-{{
-  "section_name": "achievements_vs_responsibilities",
-  "ats_score": 0,
-  "feedback": [],
-  "weak_sentences": [],
-  "strong_sentences": [],
-  "improved_content": [],
-  "examples": []
-}}
-'''
-        elif section_name == "education_clarity":
-            prompt = f'''
-You are a specialist in education section clarity/completeness.
-Resume Data: {resume_json}
-ANALYSIS TASKS:
-- Check for degree, major, school, location, years.
-- Spot missing/inconsistent dates, order, irrelevant schooling.
-- Suggest best summary for job stage/seniority.
-SCORING:
-- 9–10: Clear, complete, professional.
-- 1–4: Incomplete/unprofessional.
-Respond ONLY in this JSON:
-{{
-  "section_name": "education_clarity",
-  "ats_score": 0,
-  "feedback": [],
-  "issues_found": [],
-  "missing_information": [],
-  "recommendations": [],
-  "corrections": []
-}}
-'''
-        else:
-            prompt = f'''
+        s = section_name  # for clarity/shorthand
+
+        # Maintainable template for every section:
+        PROMPT_TEMPLATES = {
+            "quantifiable_impact": f"""
 You are an expert resume analyst.
-Resume Data: {resume_json}
-TASK: Analyze "{section_name.replace('_', ' ')}" in the resume. Give detailed feedback, score, actionable suggestions.
-Respond ONLY in this JSON:
-{{
-  "section_name": "{section_name}",
-  "ats_score": 0,
-  "feedback": [],
-  "issues_found": [],
-  "recommendations": []
-}}
-'''
+Given the resume data, for the 'quantifiable impact' section, do ALL:
+- Identify every result, outcome, or achievement with numbers/percentages/metrics (quantified).
+- For every weak or generic statement, rewrite to maximize impact, with ATS-winning specificity, quantification, and action verbs.
+- List the section's ATS score (1–10), and give the single BEST rewriting of all content as it would appear on a perfect ATS-oriented resume.
+Return: JSON with fields: ats_score, feedback, weak_sentences, strong_sentences, improved_content, best_ats_version.
+Resume Data:
+{resume_json}
+""",
+            "date_format": f"""
+You are an expert in resume chronology and date formatting.
+- Audit date fields for uniformity (e.g., MM/YYYY everywhere), completeness, and chronology (no gaps/out-of-order entries).
+- Suggest and show one universal date format for the resume.
+- Rewrite all date entries for best ATS standards.
+- Return score (1-10), feedback, issues, best_ats_version (dates properly reformatted only).
+Resume Data:
+{resume_json}
+""",
+            "weak_verbs": f"""
+You are an ATS resume language coach.
+- Identify all instances of weak, repetitive, or passive verbs.
+- Rewrite every sentence for strong, varied, ATS-winning action verbs.
+- Output: score (1-10), feedback, improved_content, best_ats_version.
+Resume Data:
+{resume_json}
+""",
+            "teamwork_collaboration": f"""
+You are an ATS-focused resume expert.
+- Evaluate all statements for demonstration of teamwork, leadership, collaboration, stakeholder communication.
+- For any project/role lacking teamwork evidence, rewrite for greatest ATS impact.
+- Output: score (1-10), feedback, best/weakest evidence, improved_content, best_ats_version.
+Resume Data:
+{resume_json}
+""",
+            "buzzwords_cliches": f"""
+You are an expert in ATS language optimization.
+- Flag all generic buzzwords/clichés and replace them with concrete, result-oriented phrasing.
+- Show before/after comparisons.
+- Return: score (1-10), feedback, improved_content (rewritten for specificity), best_ats_version (all fluff removed).
+Resume Data:
+{resume_json}
+""",
+            "unnecessary_sections": f"""
+You are a resume optimization strategist.
+- Evaluate the value of all resume sections (hobbies, references, summary, objective, etc).
+- For any irrelevant or outdated section, recommend omission or replacement.
+- Reorder for best ATS results.
+- Output: ats_score, feedback, recommended layout/sections (as best_ats_version).
+Resume Data:
+{resume_json}
+""",
+            "contact_details": f"""
+You are a professional resume auditor for contact details.
+- Audit: Name, Email (professional), Phone, LinkedIn, Portfolio/GitHub, Location (city/state only).
+- Flag any risky, missing, or unprofessional detail.
+- Recommend best-structured, ATS-compliant contact block as best_ats_version.
+Resume Data:
+{resume_json}
+""",
+            "grammar_spelling": f"""
+You are a senior editor for ATS resumes.
+- Identify and correct errors in grammar, spelling, punctuation, tense, and bullet structure.
+- Output: ats_score, all corrections, feedback, best_ats_version (flawless grammar).
+Resume Data:
+{resume_json}
+""",
+            "formatting_layout": f"""
+You are an ATS compliance and formatting expert.
+- Audit: logical flow, section separation, spacing, bullet alignment, ATS safety (no columns, graphics, or weird fonts).
+- List all improvements, and present the best-possible formatted section as best_ats_version.
+Resume Data:
+{resume_json}
+""",
+            "ats_keywords": f"""
+You are an ATS keyword optimization specialist.
+- Identify all present and missing keywords relevant for the target field/role/seniority.
+- Rewrite the section to maximally include the most important ATS keywords in context, without fluff.
+- Output: ats_score, recommended keywords, best_ats_version.
+Resume Data:
+{resume_json}
+""",
+            "skills_relevance": f"""
+You are a skills section ATS optimizer.
+- Audit skill lists for completeness, currency, and grouping (technical, soft, languages, certifications).
+- Rewrite for organization and keyword richness (best_ats_version).
+- Output: ats_score, feedback, missing items, best_ats_version.
+Resume Data:
+{resume_json}
+""",
+            "achievements_vs_responsibilities": f"""
+You are an ATS resume achievements expert.
+- Extract all statements on work/experience. For any duty-only ("responsible for..."), rewrite to achievement/result/impact form for maximum ATS.
+- Output: ats_score, feedback, before/after, best_ats_version.
+Resume Data:
+{resume_json}
+""",
+            "education_clarity": f"""
+You are an education section evaluator with ATS focus.
+- Check for education completeness, clarity, date consistency.
+- Summarize as concise, ATS-best version (clean, chronological, all fields filled, with any honors/awards).
+- Output: ats_score, feedback, missing info, best_ats_version.
+Resume Data:
+{resume_json}
+"""
+        }
+        prompt = PROMPT_TEMPLATES.get(
+            s,
+            f"""
+You are an ATS-focused resume expert.
+- Carefully evaluate the '{s.replace('_', ' ')}' section in the resume data below.
+- Score the section 1–10 for ATS excellence. Recommend all improvements as best_ats_version in strict JSON.
+Resume Data:
+{resume_json}
+"""
+        )
         return prompt
 
     def improve_and_rescore_section(
@@ -454,21 +268,12 @@ Respond ONLY in this JSON:
         resume_json: Dict[str, Any],
         section_name: str,
         improvements: Any,
-        apply_func=None
+        apply_func: Optional[Callable] = None
     ) -> Dict[str, Any]:
         """
-        Apply improvements, then rescore the section.
-        - improvements: new sentences/content to update
-        - apply_func: function to inject improvements in proper place; override per section
+        Apply improvements, then re-score by re-analyzing the improved section as latest.
         """
-        # Step 1: Apply improvements to the resume_json structure.
-        # You must provide a function to inject the improvement.
         if apply_func:
             resume_json = apply_func(resume_json, section_name, improvements)
-        else:
-            # Default: override 'improved_content' if present
-            if "improved_content" in resume_json.get(section_name, {}):
-                resume_json[section_name]["improved_content"] = improvements
-            # Otherwise, user must provide custom apply function.
-        # Step 2: Re-analyze and rescore
+        # Or: user can externally update resume_json, then simply call analyze_resume_section
         return self.analyze_resume_section(resume_json, section_name)
