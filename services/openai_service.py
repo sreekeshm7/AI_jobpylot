@@ -107,12 +107,10 @@ Only return the JSON object. Do not include explanations or extra prose.
 
     def evaluate_summary(self, resume_data: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Evaluate resume summary with ATS scoring, returning ATS score before and after improvement for each new summary.
+        Evaluate resume summary with ATS scoring, and return improvements with before/after ATS scores and explanations.
         """
         prompt = f"""
-You are an elite Applicant Tracking System (ATS) resume evaluator. Your job is to analyze the "Summary" section of a resume and evaluate its effectiveness in helping a candidate pass through automated resume screening for a targeted job.
-
-You must identify what’s strong, what’s weak, and — most importantly — generate dramatically improved summaries that score a perfect 10/10 in real ATS systems used by Fortune 500 companies and top startups.
+You are an elite Applicant Tracking System (ATS) resume evaluator. Your job is to analyze the "Summary" section of a resume and evaluate its effectiveness in helping a candidate pass ATS screening for a targeted job.
 
 Resume Data:
 {json.dumps(resume_data, indent=2)}
@@ -121,7 +119,6 @@ Step 1: Extract Existing Summary
 - Extract and display the "Summary" field from the resume exactly as it appears.
 
 Step 2: Assign ATS Score (0–10) to the original summary.
-- Evaluate using keyword density, relevance, action language, clarity, conciseness, and alignment with the full resume.
 
 Step 3: Identify Weak Sentences or Gaps
 - List vague, generic, or irrelevant phrases that reduce ATS score.
@@ -129,24 +126,19 @@ Step 3: Identify Weak Sentences or Gaps
 - Identify any **missing but important content**.
 
 Step 4: Identify Strong Sentences
-- Highlight sentences that boost ATS score.
-- Explain *why* they are effective (e.g., "high keyword density", "demonstrates quantifiable impact").
+- Highlight sentences that boost ATS score and explain *why*.
 
 Step 5: Explain Score with Bullet Points
-- Give 3–5 bullets explaining how the score was determined, listing both strengths and weaknesses.
+- Give 3–5 bullets explaining how the score was determined.
 
 Step 6: Generate 4 Dramatically Improved Summaries
 For each improvement:
-- Provide a brand-new summary, not just rewordings.
-- For each summary, report:
-    - "improved": the new improved summary text.
+- Provide a brand-new summary (not just rewordings).
+- For each summary, include:
+    - "improved": the new summary text.
     - "original_score": ATS score (0-10) for the original summary.
-    - "improved_score": ATS score (0-10) just for this improved summary.
-    - "explanation": briefly state what factors raised (or limited) the ATS score of the improved summary, compared to the original.
-
-- Each improved summary should be concise (max 4 sentences), directly reference actual content, and naturally use job-relevant high-impact language.
-- Vary summary angle and highlight different strengths for each version.
-- Use clear JSON syntax for the improved_summaries field.
+    - "improved_score": ATS score (0-10) for the improved summary.
+    - "explanation": briefly, what changes caused the improved_score to be higher (or not).
 
 Respond ONLY in the following JSON format:
 {{
@@ -176,7 +168,7 @@ Respond ONLY in the following JSON format:
 
     def evaluate_section(self, resume_data: Dict[str, Any], section_name: str) -> Dict[str, Any]:
         """
-        Evaluate specific resume section with detailed, targeted prompts
+        Evaluate specific resume section with detailed, targeted prompts.
         """
         prompt = self._get_section_specific_prompt(resume_data, section_name)
         try:
@@ -203,50 +195,46 @@ Resume Data: {resume_json}
 Tasks:
 1. Identify sentences where impact is NOT quantified or metrics are missing.
 2. For each weak sentence, rewrite it to maximize quantifiable impact and metrics.
-3. For every improvement suggest, give:
+3. For every improvement, output:
    - "original": the original sentence,
    - "improved": the improved version,
    - "original_score": ATS score (0-10) for the original,
    - "improved_score": ATS score (0-10) for your improved sentence,
    - "explanation": why/if the score has changed.
-Format all improved_content entries as a list of objects:
-  "improved_content": [
-      {{
-          "original": "...",
-          "improved": "...",
-          "original_score": X,
-          "improved_score": Y,
-          "explanation": "explain the change"
-      }}, ...
-  ]
-Respond ONLY as:
+Return:
 {{
   "section_name": "quantifiable_impact",
   "ats_score": <overall section score>,
   "feedback": [...],
   "weak_sentences": [...],
   "strong_sentences": [...],
-  "improved_content": [...],
+  "improved_content": [
+      {{
+          "original": "...",
+          "improved": "...",
+          "original_score": X,
+          "improved_score": Y,
+          "explanation": "..."
+      }}, ...
+  ],
   "examples": [...]
 }}
 """
         elif section_name == "date_format":
             return f"""
-You are an expert resume analyst specializing in date formatting and chronological consistency.
+You are an expert resume analyst specializing in date formatting and chronology.
 
 Resume Data: {resume_json}
 
-TASK: Analyze date formats, chronological order, and consistency across all sections.
-
-Respond in this exact JSON format:
+Return:
 {{
   "section_name": "date_format",
   "ats_score": 0,
-  "feedback": ["detailed analysis of date formatting and chronology"],
-  "date_issues": ["specific date formatting problems found"],
-  "suggested_format": "MM/YYYY (recommended consistent format)",
-  "formatting_issues": ["inconsistencies in date presentation"],
-  "corrections": ["corrected date formats for problematic entries"]
+  "feedback": ["..."],
+  "date_issues": ["..."],
+  "suggested_format": "...",
+  "formatting_issues": ["..."],
+  "corrections": ["..."]
 }}
 """
         elif section_name == "weak_verbs":
@@ -256,14 +244,20 @@ You are an ATS resume expert focusing on action verbs.
 Resume Data: {resume_json}
 
 Tasks:
-- For every sentence using a weak or passive verb, rewrite using a strong, active verb.
-- For each improvement, provide:
-   - "original": the original sentence,
-   - "improved": the improved sentence,
-   - "original_score": ATS score (0-10) for the original,
-   - "improved_score": ATS score (0-10) for the improved,
-   - "explanation": why the ATS score changed (or not).
-Format:
+- For every weak/passive verb sentence, rewrite using a strong, active verb.
+- For each improvement, return:
+   - "original": "...",
+   - "improved": "...",
+   - "original_score": X,
+   - "improved_score": Y,
+   - "explanation": "..."
+Return:
+{{
+  "section_name": "weak_verbs",
+  "ats_score": <overall section score>,
+  "feedback": [...],
+  "weak_sentences": [...],
+  "strong_sentences": [...],
   "improved_content": [
       {{
         "original": "...",
@@ -273,27 +267,17 @@ Format:
         "explanation": "..."
       }},
       ...
-  ]
-Respond in this JSON format:
-{{
-  "section_name": "weak_verbs",
-  "ats_score": <overall section score>,
-  "feedback": [...],
-  "weak_sentences": [...],
-  "strong_sentences": [...],
-  "improved_content": [...],
+  ],
   "examples": [...]
 }}
 """
         elif section_name == "teamwork_collaboration":
             return f"""
-You are an expert resume analyst specializing in teamwork and collaboration indicators.
+You are an expert resume analyst specializing in teamwork indicators.
 
 Resume Data: {resume_json}
 
-TASK: Analyze how well the resume demonstrates teamwork, collaboration, and interpersonal skills.
-
-Respond in this JSON format:
+Return:
 {{
   "section_name": "teamwork_collaboration",
   "ats_score": 0,
@@ -306,13 +290,11 @@ Respond in this JSON format:
 """
         elif section_name == "buzzwords_cliches":
             return f"""
-You are an expert resume analyst specializing in identifying and eliminating buzzwords, clichés, and overused phrases.
+You are an expert resume analyst specializing in buzzwords and clichés.
 
 Resume Data: {resume_json}
 
-TASK: Identify buzzwords, clichés, and overused phrases that hurt ATS performance.
-
-Respond in this JSON format:
+Return:
 {{
   "section_name": "buzzwords_cliches",
   "ats_score": 0,
@@ -325,13 +307,11 @@ Respond in this JSON format:
 """
         elif section_name == "unnecessary_sections":
             return f"""
-You are an expert resume analyst specializing in resume structure and section relevance.
+You are an expert resume analyst specializing in section relevance.
 
 Resume Data: {resume_json}
 
-TASK: Evaluate the relevance and necessity of all resume sections for ATS optimization.
-
-Respond in this JSON format:
+Return:
 {{
   "section_name": "unnecessary_sections",
   "ats_score": 0,
@@ -343,13 +323,11 @@ Respond in this JSON format:
 """
         elif section_name == "contact_details":
             return f"""
-You are an expert resume analyst specializing in contact information optimization and professionalism.
+You are an expert resume analyst specializing in contact information.
 
 Resume Data: {resume_json}
 
-TASK: Evaluate completeness, professionalism, and ATS-friendliness of contact information.
-
-Respond in this JSON format:
+Return:
 {{
   "section_name": "contact_details",
   "ats_score": 0,
@@ -368,13 +346,11 @@ Respond in this JSON format:
 """
         elif section_name == "grammar_spelling":
             return f"""
-You are an expert resume analyst and professional editor specializing in grammar and spelling.
+You are an expert resume editor specializing in grammar and spelling.
 
 Resume Data: {resume_json}
 
-TASK: Conduct a thorough grammar and spelling analysis.
-
-Respond in this JSON format:
+Return:
 {{
   "section_name": "grammar_spelling",
   "ats_score": 0,
@@ -387,13 +363,11 @@ Respond in this JSON format:
 """
         elif section_name == "formatting_layout":
             return f"""
-You are an expert resume analyst specializing in formatting, layout, and ATS compatibility.
+You are an expert in resume formatting and ATS compatibility.
 
 Resume Data: {resume_json}
 
-TASK: Analyze the formatting and layout structure for ATS readability.
-
-Respond in this JSON format:
+Return:
 {{
   "section_name": "formatting_layout",
   "ats_score": 0,
@@ -405,13 +379,11 @@ Respond in this JSON format:
 """
         elif section_name == "ats_keywords":
             return f"""
-You are an expert resume analyst specializing in ATS keyword optimization and terminology.
+You are an ATS keyword optimization expert.
 
 Resume Data: {resume_json}
 
-TASK: Analyze keyword usage and optimization for ATS systems.
-
-Respond in this JSON format:
+Return:
 {{
   "section_name": "ats_keywords",
   "ats_score": 0,
@@ -424,13 +396,11 @@ Respond in this JSON format:
 """
         elif section_name == "skills_relevance":
             return f"""
-You are an expert resume analyst specializing in skills assessment and relevance evaluation.
+You are a resume skills relevance analyst.
 
 Resume Data: {resume_json}
 
-TASK: Analyze the skills section for relevance, organization, and completeness.
-
-Respond in this JSON format:
+Return:
 {{
   "section_name": "skills_relevance",
   "ats_score": 0,
@@ -448,8 +418,8 @@ You are an ATS resume analysis expert. For each responsibility-focused statement
 Resume Data: {resume_json}
 
 Tasks:
-- Rewrite to focus on outcomes (achievements).
-- For every improvement, output as:
+- Rewrite to focus on achievements and outcomes.
+- For every improvement, output:
   "improved_content": [
       {{
         "original": "...",
@@ -460,7 +430,7 @@ Tasks:
       }},
       ...
   ]
-Respond ONLY in this JSON:
+Return:
 {{
   "section_name": "achievements_vs_responsibilities",
   "ats_score": <overall section score>,
@@ -473,13 +443,11 @@ Respond ONLY in this JSON:
 """
         elif section_name == "education_clarity":
             return f"""
-You are an expert resume analyst specializing in education section optimization and clarity.
+You are an expert in resume education section clarity.
 
 Resume Data: {resume_json}
 
-TASK: Analyze the education section for completeness, relevance, and presentation.
-
-Respond in this JSON format:
+Return:
 {{
   "section_name": "education_clarity",
   "ats_score": 0,
@@ -492,16 +460,15 @@ Respond in this JSON format:
 """
         else:
             return f"""
-You are an expert resume analyst specializing in the {section_name.replace('_',' ')} section.
+You are an expert resume analyst for the {section_name.replace('_',' ')} section.
 
 Resume Data: {resume_json}
 
-TASK: Analyze this section for ATS performance and professional quality.
-
-Respond in this JSON format:
+Return:
 {{
   "section_name": "{section_name}",
   "ats_score": 0,
-  "feedback": ["analysis..."]
+  "feedback": ["..."]
 }}
 """
+
