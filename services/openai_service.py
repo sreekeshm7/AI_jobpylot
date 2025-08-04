@@ -107,40 +107,37 @@ Only return the JSON object. Do not include explanations or extra prose.
 
     def evaluate_summary(self, resume_data: Dict[str, Any]) -> Dict[str, Any]:
     """
-    Evaluate resume summary with ATS scoring, returning ATS score before and after improvement for each new summary.
+    Evaluate resume summary with ATS scoring, returning ATS score before and after improvement for each improved summary.
     """
     prompt = f"""
-You are an elite Applicant Tracking System (ATS) resume evaluator. Your job is to analyze the "Summary" section of a resume and evaluate its effectiveness in helping a candidate pass through automated resume screening for a targeted job.
+You are an elite Applicant Tracking System (ATS) resume evaluator. Your job is to analyze the "Summary" section of a resume and evaluate its effectiveness for passing automated resume screening.
 
 Resume Data:
 {json.dumps(resume_data, indent=2)}
 
-Step 1: Extract Existing Summary
-- Extract and display the "Summary" field from the resume exactly as it appears.
+Step 1: Extract the "Summary" field from the resume exactly as it appears.
 
-Step 2: Assign ATS Score (0–10) to the original summary.
-- Evaluate using keyword density, relevance, action language, clarity, conciseness, and alignment with the full resume.
+Step 2: Assign an ATS Score (0–10) to the original summary.
+- Use criteria such as keyword density, relevance, action language, clarity, conciseness, and alignment with the full resume.
 
-Step 3: Identify Weak Sentences or Gaps
-- List vague, generic, or irrelevant phrases that reduce ATS score.
+Step 3: Identify weak sentences or gaps.
+- List vague, generic, or irrelevant phrases that reduce the ATS score.
 - Include brief reasons (e.g., “lacks measurable impact”, “missing keyword for skill”, “unclear phrasing”).
-- Identify any **missing but important content**.
+- Identify any missing but important content.
 
-Step 4: Identify Strong Sentences
+Step 4: Identify strong sentences.
 - Highlight sentences that boost ATS score.
-- Explain *why* they are effective (e.g., "high keyword density", "demonstrates quantifiable impact").
+- Explain why they are effective.
 
-Step 5: Explain Score with Bullet Points
-- Give 3–5 bullets explaining how the score was determined, listing both strengths and weaknesses.
+Step 5: Give 3–5 bullets explaining how the score was determined.
 
-Step 6: Generate and return 4 dramatically improved summaries:
-- Each MUST be clearly different, concise (max 4 sentences), realistic, and based on the resume.
-- For each improved summary, return a dictionary with:
-    - "improved": the new summary.
-    - "original_score": ATS score (0-10) for the original summary.
-    - "improved_score": ATS score (0-10) for this improved summary.
-    - "explanation": why the improved summary's ATS score changed.
-- These four dictionaries must be returned in a field named "improved_summaries".
+Step 6: Generate and return exactly 4 dramatically improved summaries.
+- Each must be a new version (not a rewording) based on the resume content, concise, max 4 sentences.
+- For each, return:
+    - "improved": the improved summary text.
+    - "original_score": the ATS score (0-10) for the original.
+    - "improved_score": the ATS score (0-10) for this new summary.
+    - "explanation": why the new summary's score improved (or didn't).
 
 Respond ONLY in the following JSON format:
 {{
@@ -164,11 +161,20 @@ Respond ONLY in the following JSON format:
             temperature=0.3,
             response_format={"type": "json_object"}
         )
-        return json.loads(response.choices[0].message.content)
+        # Accept only "improved_summaries", not "new_summaries"
+        result = json.loads(response.choices[0].message.content)
+        # Backwards compatibility: if "new_summaries" exists and "improved_summaries" does not, migrate over
+        if "new_summaries" in result and not result.get("improved_summaries"):
+            result["improved_summaries"] = []
+            for ns in result["new_summaries"]:
+                result["improved_summaries"].append({"improved": ns, "original_score": result.get("ats_score", 0), "improved_score": result.get("ats_score", 0), "explanation": ""})
+            result.pop("new_summaries")
+        return result
     except json.JSONDecodeError as e:
         raise Exception(f"Failed to parse OpenAI response as JSON: {str(e)}")
     except Exception as e:
         raise Exception(f"OpenAI API error: {str(e)}")
+
 
 
     def evaluate_section(self, resume_data: Dict[str, Any], section_name: str) -> Dict[str, Any]:
@@ -476,5 +482,6 @@ Return:
   "feedback": ["..."]
 }}
 """
+
 
 
