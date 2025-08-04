@@ -1,7 +1,6 @@
 from pydantic import BaseModel
 from typing import List, Dict, Any
 
-# Basic models - simplified to avoid conflicts
 class ProjectModel(BaseModel):
     Title: str = ""
     Description: str = ""
@@ -75,14 +74,14 @@ class SummaryEvaluation(BaseModel):
     score_feedback: List[str] = []
     new_summaries: List[str] = []
 
-# Section-specific evaluation models
+# Upgraded section models (improved_content is now list of dicts)
 class QuantifiableImpactEvaluation(BaseModel):
     section_name: str = "quantifiable_impact"
     ats_score: int = 0
     feedback: List[str] = []
     weak_sentences: List[str] = []
     strong_sentences: List[str] = []
-    improved_content: List[str] = []
+    improved_content: List[Dict[str, Any]] = []
     examples: List[str] = []
 
 class DateFormatEvaluation(BaseModel):
@@ -100,7 +99,7 @@ class WeakVerbsEvaluation(BaseModel):
     feedback: List[str] = []
     weak_sentences: List[str] = []
     strong_sentences: List[str] = []
-    improved_content: List[str] = []
+    improved_content: List[Dict[str, Any]] = []
     examples: List[str] = []
 
 class TeamworkCollaborationEvaluation(BaseModel):
@@ -178,7 +177,7 @@ class AchievementsVsResponsibilitiesEvaluation(BaseModel):
     feedback: List[str] = []
     weak_sentences: List[str] = []
     strong_sentences: List[str] = []
-    improved_content: List[str] = []
+    improved_content: List[Dict[str, Any]] = []
     examples: List[str] = []
 
 class EducationClarityEvaluation(BaseModel):
