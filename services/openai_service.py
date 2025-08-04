@@ -106,11 +106,11 @@ Only return the JSON object. Do not include explanations or extra prose.
             raise Exception(f"OpenAI API error: {str(e)}")
 
     def evaluate_summary(self, resume_data: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Evaluate resume summary with ATS scoring, and return improvements with before/after ATS scores and explanations.
-        """
-        prompt = f"""
-You are an elite Applicant Tracking System (ATS) resume evaluator. Your job is to analyze the "Summary" section of a resume and evaluate its effectiveness in helping a candidate pass ATS screening for a targeted job.
+    """
+    Evaluate resume summary with ATS scoring, returning ATS score before and after improvement for each new summary.
+    """
+    prompt = f"""
+You are an elite Applicant Tracking System (ATS) resume evaluator. Your job is to analyze the "Summary" section of a resume and evaluate its effectiveness in helping a candidate pass through automated resume screening for a targeted job.
 
 Resume Data:
 {json.dumps(resume_data, indent=2)}
@@ -119,6 +119,7 @@ Step 1: Extract Existing Summary
 - Extract and display the "Summary" field from the resume exactly as it appears.
 
 Step 2: Assign ATS Score (0–10) to the original summary.
+- Evaluate using keyword density, relevance, action language, clarity, conciseness, and alignment with the full resume.
 
 Step 3: Identify Weak Sentences or Gaps
 - List vague, generic, or irrelevant phrases that reduce ATS score.
@@ -126,19 +127,20 @@ Step 3: Identify Weak Sentences or Gaps
 - Identify any **missing but important content**.
 
 Step 4: Identify Strong Sentences
-- Highlight sentences that boost ATS score and explain *why*.
+- Highlight sentences that boost ATS score.
+- Explain *why* they are effective (e.g., "high keyword density", "demonstrates quantifiable impact").
 
 Step 5: Explain Score with Bullet Points
-- Give 3–5 bullets explaining how the score was determined.
+- Give 3–5 bullets explaining how the score was determined, listing both strengths and weaknesses.
 
-Step 6: Generate 4 Dramatically Improved Summaries
-For each improvement:
-- Provide a brand-new summary (not just rewordings).
-- For each summary, include:
-    - "improved": the new summary text.
+Step 6: Generate and return 4 dramatically improved summaries:
+- Each MUST be clearly different, concise (max 4 sentences), realistic, and based on the resume.
+- For each improved summary, return a dictionary with:
+    - "improved": the new summary.
     - "original_score": ATS score (0-10) for the original summary.
-    - "improved_score": ATS score (0-10) for the improved summary.
-    - "explanation": briefly, what changes caused the improved_score to be higher (or not).
+    - "improved_score": ATS score (0-10) for this improved summary.
+    - "explanation": why the improved summary's ATS score changed.
+- These four dictionaries must be returned in a field named "improved_summaries".
 
 Respond ONLY in the following JSON format:
 {{
@@ -149,22 +151,25 @@ Respond ONLY in the following JSON format:
   "score_feedback": ["...", "...", "..."],
   "improved_summaries": [
     {{"improved": "...", "original_score": 0, "improved_score": 0, "explanation": "..."}},
-    ...
+    {{"improved": "...", "original_score": 0, "improved_score": 0, "explanation": "..."}},
+    {{"improved": "...", "original_score": 0, "improved_score": 0, "explanation": "..."}},
+    {{"improved": "...", "original_score": 0, "improved_score": 0, "explanation": "..."}}
   ]
 }}
 """
-        try:
-            response = self.client.chat.completions.create(
-                model="gpt-3.5-turbo",
-                messages=[{"role": "user", "content": prompt}],
-                temperature=0.3,
-                response_format={"type": "json_object"}
-            )
-            return json.loads(response.choices[0].message.content)
-        except json.JSONDecodeError as e:
-            raise Exception(f"Failed to parse OpenAI response as JSON: {str(e)}")
-        except Exception as e:
-            raise Exception(f"OpenAI API error: {str(e)}")
+    try:
+        response = self.client.chat.completions.create(
+            model="gpt-3.5-turbo",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.3,
+            response_format={"type": "json_object"}
+        )
+        return json.loads(response.choices[0].message.content)
+    except json.JSONDecodeError as e:
+        raise Exception(f"Failed to parse OpenAI response as JSON: {str(e)}")
+    except Exception as e:
+        raise Exception(f"OpenAI API error: {str(e)}")
+
 
     def evaluate_section(self, resume_data: Dict[str, Any], section_name: str) -> Dict[str, Any]:
         """
@@ -471,4 +476,5 @@ Return:
   "feedback": ["..."]
 }}
 """
+
 
