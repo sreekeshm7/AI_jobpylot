@@ -188,3 +188,20 @@ class EducationClarityEvaluation(BaseModel):
     missing_information: List[str] = []
     recommendations: List[str] = []
     corrections: List[str] = []
+class RelevantSkillSuggestionRequest(BaseModel):
+    resume_data: Dict[str, Any]
+    target_role: str = ""  # Optional: User may provide a target job/role
+
+class RelevantSkillSuggestionResponse(BaseModel):
+    suggested_skills: List[str]
+    rationale: List[str]  # Optional explanations
+
+class SectionRewriteRequest(BaseModel):
+    section: str  # e.g., "WorkExperience", "Education", "Projects"
+    description: str  # The original description to be rewritten
+    resume_data: Dict[str, Any] = {}  # Optionally provide context, e.g., full resume
+
+class SectionRewriteResponse(BaseModel):
+    original: str
+    rewritten: str
+    rationale: str
