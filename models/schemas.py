@@ -205,4 +205,17 @@ class SectionRewriteResponse(BaseModel):
     original: str
     rewritten: str
     rationale: str
+class SummaryImprovement(BaseModel):
+    improved: str
+    original_score: int
+    improved_score: int
+    explanation: str
+
+class SummaryEvaluation(BaseModel):
+    extracted_summary: str
+    ats_score: int
+    weak_sentences: List[str]
+    strong_sentences: List[str]
+    score_feedback: List[str]
+    improved_summaries: List[SummaryImprovement]
 
