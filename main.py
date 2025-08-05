@@ -11,7 +11,8 @@ from models.schemas import (
     TeamworkCollaborationEvaluation, BuzzwordsEvaluation, UnnecessarySectionsEvaluation,
     ContactDetailsEvaluation, GrammarSpellingEvaluation, FormattingLayoutEvaluation,
     ATSKeywordsEvaluation, SkillsRelevanceEvaluation, AchievementsVsResponsibilitiesEvaluation,
-    EducationClarityEvaluation
+    EducationClarityEvaluation,RelevantSkillSuggestionRequest, RelevantSkillSuggestionResponse,
+    SectionRewriteRequest, SectionRewriteResponse
     # Removed GenericSectionEvaluation from import
 )
 
@@ -181,7 +182,28 @@ async def get_improvement_report(resume_data: Dict[str, Any]):
         return report
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error generating report: {str(e)}")
+@app.post("/suggest-relevant-skills", response_model=RelevantSkillSuggestionResponse)
+async def suggest_relevant_skills(req: RelevantSkillSuggestionRequest):
+    try:
+        result = openai_service.suggest_relevant_skills(
+            resume_data=req.resume_data,
+            target_role=req.target_role
+        )
+        return RelevantSkillSuggestionResponse(**result)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error suggesting skills: {str(e)}")
 
+@app.post("/rewrite-section", response_model=SectionRewriteResponse)
+async def rewrite_section(req: SectionRewriteRequest):
+    try:
+        result = openai_service.rewrite_section(
+            section=req.section,
+            description=req.description,
+            resume_data=req.resume_data if req.resume_data else None
+        )
+        return SectionRewriteResponse(**result)
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Error rewriting section: {str(e)}")
 @app.get("/")
 async def root():
     return {"message": "Resume Analyzer API is running"}
@@ -190,6 +212,7 @@ if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
 
 
 
