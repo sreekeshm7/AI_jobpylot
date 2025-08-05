@@ -72,7 +72,7 @@ class SummaryEvaluation(BaseModel):
     weak_sentences: List[str] = []
     strong_sentences: List[str] = []
     score_feedback: List[str] = []
-    new_summaries: List[str] = []
+    improved_summaries: List[str] = []
 
 # Upgraded section models (improved_content is now list of dicts)
 class QuantifiableImpactEvaluation(BaseModel):
@@ -205,3 +205,4 @@ class SectionRewriteResponse(BaseModel):
     original: str
     rewritten: str
     rationale: str
+
