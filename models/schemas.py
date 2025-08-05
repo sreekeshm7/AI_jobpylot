@@ -1,7 +1,7 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 
-# --- Resume structural models ---
+# --- Resume data models ---
 
 class ProjectModel(BaseModel):
     Title: str = ""
@@ -67,7 +67,8 @@ class ResumeResponse(BaseModel):
     resume: ResumeModel
     summary: str
 
-# --- Resume summary improvement model ---
+# --- Summary improvement models ---
+
 class SummaryImprovement(BaseModel):
     improved: str
     original_score: int
@@ -82,7 +83,8 @@ class SummaryEvaluation(BaseModel):
     score_feedback: List[str]
     improved_summaries: List[SummaryImprovement]
 
-# --- Section evaluation models (use dict for improved_content if section rewrites possible) ---
+# --- Section evaluation models (key ones shown below) ---
+
 class QuantifiableImpactEvaluation(BaseModel):
     section_name: str = "quantifiable_impact"
     ats_score: int = 0
@@ -197,7 +199,8 @@ class EducationClarityEvaluation(BaseModel):
     recommendations: List[str] = []
     corrections: List[str] = []
 
-# --- AI Skill Suggestion Endpoint ---
+# --- Skill Suggestion API models ---
+
 class RelevantSkillSuggestionRequest(BaseModel):
     resume_data: Dict[str, Any]
     target_role: Optional[str] = ""
@@ -206,9 +209,10 @@ class RelevantSkillSuggestionResponse(BaseModel):
     suggested_skills: List[str]
     rationale: List[str]
 
-# --- Section Rewrite Endpoint ---
+# --- Section Rewrite API models ---
+
 class SectionRewriteRequest(BaseModel):
-    section: str  # e.g., "WorkExperience", "Education", "Projects"
+    section: str
     description: str
     resume_data: Optional[Dict[str, Any]] = {}
 
