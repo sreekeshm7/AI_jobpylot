@@ -176,6 +176,59 @@ Respond ONLY in the following JSON format:
         raise Exception(f"OpenAI API error: {str(e)}")
 
 
+    def suggest_relevant_skills(self, resume_data: Dict[str, Any], target_role: str = "") -> Dict[str, Any]:
+        prompt = f"""
+You are an expert resume AI and career advisor.
+Analyze the following resume. Your job is to suggest the most relevant and high-impact skills (technical and soft) that are either missing from the 'Skills' section or could be added or emphasized to make this candidate a stronger fit for{" the role of " + target_role if target_role else "their next job"}.
+- Be specific and job-market-aware for {target_role if target_role else "the technology sector"}.
+- Suggest only skills that align with the candidate's background or desired role, not random "buzzwords".
+Resume JSON:
+{json.dumps(resume_data, indent=2)}
+Return your answer as:
+{{
+  "suggested_skills": ["...", "..."],
+  "rationale": ["...Explain why each skill is suggested (one per skill, or one rationale string for all)..."]
+}}
+"""
+        try:
+            response = self.client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.3,
+                response_format={"type": "json_object"}
+            )
+            return json.loads(response.choices[0].message.content)
+        except Exception as e:
+            raise Exception(f"OpenAI API error (skill suggestion): {str(e)}")
+
+    def rewrite_section(self, section: str, description: str, resume_data: Dict[str, Any] = None) -> Dict[str, Any]:
+        context_block = f"\nResume Context:\n{json.dumps(resume_data, indent=2)}" if resume_data else ""
+        prompt = f"""
+You are an expert resume writer and ATS optimization specialist.
+Your job is to rewrite the following {section} section's description to maximize professional clarity, impact, strong action verbs, and ATS-relevant keywords.
+- Keep the output the same length or shorter.
+- Use specific, quantifiable achievements if possible.
+- Improve grammar, clarity, and alignment with the best resume practices for this section.
+Original description:
+\"\"\"{description}\"\"\"
+{context_block}
+Return your answer in this JSON format:
+{{
+  "original": "...",
+  "rewritten": "...",
+  "rationale": "...(brief, 1–2 sentence explanation of how and why the rewrite is improved for ATS and recruiter impact)..."
+}}
+"""
+        try:
+            response = self.client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.2,
+                response_format={"type": "json_object"}
+            )
+            return json.loads(response.choices[0].message.content)
+        except Exception as e:
+            raise Exception(f"OpenAI API error (section rewrite): {str(e)}")
 
     def evaluate_section(self, resume_data: Dict[str, Any], section_name: str) -> Dict[str, Any]:
         """
@@ -482,6 +535,9 @@ Return:
   "feedback": ["..."]
 }}
 """
+    
+      
+
 
 
 
