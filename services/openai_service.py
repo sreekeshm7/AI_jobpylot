@@ -116,7 +116,9 @@ Only return the JSON object. Do not include explanations or extra prose.
     
     Instructions:
     
-    **Step 1:** Extract the "Summary" field from the resume *exactly as it appears*.
+    **Step 1:** Extract and output EXACTLY the "Summary" field as found in the resume data. 
+Do NOT reconstruct, paraphrase, or fill a missing summary here. 
+If no summary is present, set "extracted_summary" to an empty string.
     
     **Step 2:** Assign an ATS Score (0–10) to the original summary.  
     If there is no summary, set "extracted_summary" to an empty string and "ats_score" to 0.
@@ -536,5 +538,6 @@ Return:
   "feedback": ["..."]
 }}
 """
+
 
 
