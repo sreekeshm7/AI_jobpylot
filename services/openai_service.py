@@ -106,10 +106,10 @@ Only return the JSON object. Do not include explanations or extra prose.
             raise Exception(f"OpenAI API error: {str(e)}")
 
     def evaluate_summary(self, resume_data: Dict[str, Any]) -> Dict[str, Any]:
-    """
-    Evaluate resume summary with ATS scoring, returning ATS score before and after improvement for each improved summary.
-    """
-    prompt = f"""
+        """
+        Evaluate resume summary with ATS scoring, returning ATS score before and after improvement for each improved summary.
+        """
+        prompt = f"""
 You are an elite Applicant Tracking System (ATS) resume evaluator. Your job is to analyze the "Summary" section of a resume and evaluate its effectiveness for passing automated resume screening.
 
 Resume Data:
@@ -154,32 +154,36 @@ Respond ONLY in the following JSON format:
   ]
 }}
 """
-    try:
-        response = self.client.chat.completions.create(
-            model="gpt-3.5-turbo",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=0.3,
-            response_format={"type": "json_object"}
-        )
-        # Accept only "improved_summaries", not "new_summaries"
-        result = json.loads(response.choices[0].message.content)
-        # Backwards compatibility: if "new_summaries" exists and "improved_summaries" does not, migrate over
-        if "new_summaries" in result and not result.get("improved_summaries"):
-            result["improved_summaries"] = []
-            for ns in result["new_summaries"]:
-                result["improved_summaries"].append({"improved": ns, "original_score": result.get("ats_score", 0), "improved_score": result.get("ats_score", 0), "explanation": ""})
-            result.pop("new_summaries")
-        return result
-    except json.JSONDecodeError as e:
-        raise Exception(f"Failed to parse OpenAI response as JSON: {str(e)}")
-    except Exception as e:
-        raise Exception(f"OpenAI API error: {str(e)}")
-
+        try:
+            response = self.client.chat.completions.create(
+                model="gpt-3.5-turbo",
+                messages=[{"role": "user", "content": prompt}],
+                temperature=0.3,
+                response_format={"type": "json_object"}
+            )
+            # Accept only "improved_summaries", not "new_summaries"
+            result = json.loads(response.choices[0].message.content)
+            # Backwards compatibility: if "new_summaries" exists and "improved_summaries" does not, migrate over
+            if "new_summaries" in result and not result.get("improved_summaries"):
+                result["improved_summaries"] = []
+                for ns in result["new_summaries"]:
+                    result["improved_summaries"].append({
+                        "improved": ns,
+                        "original_score": result.get("ats_score", 0),
+                        "improved_score": result.get("ats_score", 0),
+                        "explanation": ""
+                    })
+                result.pop("new_summaries")
+            return result
+        except json.JSONDecodeError as e:
+            raise Exception(f"Failed to parse OpenAI response as JSON: {str(e)}")
+        except Exception as e:
+            raise Exception(f"OpenAI API error: {str(e)}")
 
     def suggest_relevant_skills(self, resume_data: Dict[str, Any], target_role: str = "") -> Dict[str, Any]:
         prompt = f"""
 You are an expert resume AI and career advisor.
-Analyze the following resume. Your job is to suggest the most relevant and high-impact skills (technical and soft) that are either missing from the 'Skills' section or could be added or emphasized to make this candidate a stronger fit for{" the role of " + target_role if target_role else "their next job"}.
+Analyze the following resume. Your job is to suggest the most relevant and high-impact skills (technical and soft) that are either missing from the 'Skills' section or could be added or emphasized to make this candidate a stronger fit for{" the role of " + target_role if target_role else " their next job"}.
 - Be specific and job-market-aware for {target_role if target_role else "the technology sector"}.
 - Suggest only skills that align with the candidate's background or desired role, not random "buzzwords".
 Resume JSON:
@@ -535,9 +539,3 @@ Return:
   "feedback": ["..."]
 }}
 """
-    
-      
-
-
-
-
