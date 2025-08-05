@@ -37,12 +37,20 @@ async def upload_resume(file: UploadFile = File(...)):
 
 @app.post("/evaluate-summary", response_model=SummaryEvaluation)
 async def evaluate_summary(resume_data: Dict[str, Any]):
-    """Evaluate resume summary with ATS scoring"""
+    # Set extracted_summary as it appears for maximum consistency, even if LLM response has it different
+    extracted_summary = (
+        resume_data.get("Summary")
+        or resume_data.get("summary")
+        or resume_data.get("resume", {}).get("Summary")
+        or ""
+    )
     try:
-        evaluation = openai_service.evaluate_summary(resume_data)
-        return SummaryEvaluation(**evaluation)
+        result = openai_service.evaluate_summary(resume_data)
+        result["extracted_summary"] = extracted_summary  # always force sync!
+        return SummaryEvaluation(**result)
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"Error evaluating summary: {str(e)}")
+
 
 @app.post("/evaluate-quantifiable-impact", response_model=QuantifiableImpactEvaluation)
 async def evaluate_quantifiable_impact(resume_data: Dict[str, Any]):
@@ -212,6 +220,7 @@ if __name__ == "__main__":
     import uvicorn
 
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
 
 
 
