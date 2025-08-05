@@ -107,53 +107,53 @@ Only return the JSON object. Do not include explanations or extra prose.
 
     def evaluate_summary(self, resume_data: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Evaluate resume summary with ATS scoring, returning ATS score before and after improvement for each improved summary.
+        Evaluate resume summary with ATS scoring, showcasing the literal weak sentences found in the summary.
         """
         prompt = f"""
-You are an elite Applicant Tracking System (ATS) resume evaluator. Your job is to analyze the "Summary" section of a resume and evaluate its effectiveness for passing automated resume screening.
-
-Resume Data:
-{json.dumps(resume_data, indent=2)}
-
-Step 1: Extract the "Summary" field from the resume exactly as it appears.
-
-Step 2: Assign an ATS Score (0–10) to the original summary.
-- Use criteria such as keyword density, relevance, action language, clarity, conciseness, and alignment with the full resume.
-
-Step 3: Identify weak sentences or gaps.
-- List vague, generic, or irrelevant phrases that reduce the ATS score.
-- Include brief reasons (e.g., “lacks measurable impact”, “missing keyword for skill”, “unclear phrasing”).
-- Identify any missing but important content.
-
-Step 4: Identify strong sentences.
-- Highlight sentences that boost ATS score.
-- Explain why they are effective.
-
-Step 5: Give 3–5 bullets explaining how the score was determined.
-
-Step 6: Generate and return exactly 4 dramatically improved summaries.
-- Each must be a new version (not a rewording) based on the resume content, concise, max 4 sentences.
-- For each, return:
-    - "improved": the improved summary text.
-    - "original_score": the ATS score (0-10) for the original.
-    - "improved_score": the ATS score (0-10) for this new summary.
-    - "explanation": why the new summary's score improved (or didn't).
-
-Respond ONLY in the following JSON format:
-{{
-  "extracted_summary": "...",
-  "ats_score": 0,
-  "weak_sentences": ["..."],
-  "strong_sentences": ["..."],
-  "score_feedback": ["...", "...", "..."],
-  "improved_summaries": [
-    {{"improved": "...", "original_score": 0, "improved_score": 0, "explanation": "..."}},
-    {{"improved": "...", "original_score": 0, "improved_score": 0, "explanation": "..."}},
-    {{"improved": "...", "original_score": 0, "improved_score": 0, "explanation": "..."}},
-    {{"improved": "...", "original_score": 0, "improved_score": 0, "explanation": "..."}}
-  ]
-}}
-"""
+    You are an elite Applicant Tracking System (ATS) resume evaluator. Your job is to analyze the "Summary" section of a resume and evaluate its effectiveness for automated screening.
+    
+    Resume Data:
+    {json.dumps(resume_data, indent=2)}
+    
+    Follow these steps:
+    
+    **Step 1:** Extract the "Summary" field from the resume *exactly as it appears*.
+    
+    **Step 2:** Assign an ATS Score (0–10) to the original summary.
+    - Use criteria such as keyword density, relevance, action language, clarity, conciseness, and alignment with the full resume.
+    
+    **Step 3:** Identify Weak Sentences
+    - From the summary, list the actual sentences or sentence fragments that are vague, generic, lack measurable impact, or reduce the ATS score.
+    - In "weak_sentences", SHOW ONLY the literal sentences or direct quoted phrases as they appeared in the summary. Do NOT provide explanations, reasons, or paraphrased shortcomings here—only copy the literal text that is considered weak.
+    
+    **Step 4:** Identify Strong Sentences
+    - From the summary, list the sentences or phrases that effectively boost ATS score, copying their literal text as they appear in the summary.
+    
+    **Step 5:** Give 3–5 bullet points in "score_feedback" explaining how the score was determined, listing strengths and weaknesses as needed.
+    
+    **Step 6:** Generate and return exactly 4 dramatically improved summaries.
+    - Each should be concise (maximum 4 sentences), realistic, not just reworded, and directly based on the candidate's true skills/experience.
+    - For each, provide:
+        - "improved": the improved summary.
+        - "original_score": the ATS score (0-10) for the original summary.
+        - "improved_score": the ATS score (0-10) for this improved summary.
+        - "explanation": why the new summary's score improved (or didn't).
+    
+    Respond ONLY in the following JSON format:
+    {{
+      "extracted_summary": "...",
+      "ats_score": 0,
+      "weak_sentences": ["..."],         // Each element must be a LITERAL sentence or fragment copied from the summary, not an explanation or reason.
+      "strong_sentences": ["..."],       // Each element is literal text from the summary that is strong.
+      "score_feedback": ["...", "..."],
+      "improved_summaries": [
+        {{"improved": "...", "original_score": 0, "improved_score": 0, "explanation": "..."}},
+        {{"improved": "...", "original_score": 0, "improved_score": 0, "explanation": "..."}},
+        {{"improved": "...", "original_score": 0, "improved_score": 0, "explanation": "..."}},
+        {{"improved": "...", "original_score": 0, "improved_score": 0, "explanation": "..."}}
+      ]
+    }}
+    """
         try:
             response = self.client.chat.completions.create(
                 model="gpt-3.5-turbo",
@@ -179,6 +179,7 @@ Respond ONLY in the following JSON format:
             raise Exception(f"Failed to parse OpenAI response as JSON: {str(e)}")
         except Exception as e:
             raise Exception(f"OpenAI API error: {str(e)}")
+
 
     def suggest_relevant_skills(self, resume_data: Dict[str, Any], target_role: str = "") -> Dict[str, Any]:
         prompt = f"""
@@ -539,3 +540,4 @@ Return:
   "feedback": ["..."]
 }}
 """
+
