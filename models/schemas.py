@@ -1,5 +1,7 @@
-from pydantic import BaseModel
-from typing import List, Dict, Any
+from pydantic import BaseModel, Field
+from typing import List, Dict, Any, Optional
+
+# --- Resume structural models ---
 
 class ProjectModel(BaseModel):
     Title: str = ""
@@ -65,16 +67,22 @@ class ResumeResponse(BaseModel):
     resume: ResumeModel
     summary: str
 
-# Summary evaluation
-class SummaryEvaluation(BaseModel):
-    extracted_summary: str = ""
-    ats_score: int = 0
-    weak_sentences: List[str] = []
-    strong_sentences: List[str] = []
-    score_feedback: List[str] = []
-    improved_summaries: List[str] = []
+# --- Resume summary improvement model ---
+class SummaryImprovement(BaseModel):
+    improved: str
+    original_score: int
+    improved_score: int
+    explanation: str
 
-# Upgraded section models (improved_content is now list of dicts)
+class SummaryEvaluation(BaseModel):
+    extracted_summary: str
+    ats_score: int
+    weak_sentences: List[str]
+    strong_sentences: List[str]
+    score_feedback: List[str]
+    improved_summaries: List[SummaryImprovement]
+
+# --- Section evaluation models (use dict for improved_content if section rewrites possible) ---
 class QuantifiableImpactEvaluation(BaseModel):
     section_name: str = "quantifiable_impact"
     ats_score: int = 0
@@ -188,34 +196,23 @@ class EducationClarityEvaluation(BaseModel):
     missing_information: List[str] = []
     recommendations: List[str] = []
     corrections: List[str] = []
+
+# --- AI Skill Suggestion Endpoint ---
 class RelevantSkillSuggestionRequest(BaseModel):
     resume_data: Dict[str, Any]
-    target_role: str = ""  # Optional: User may provide a target job/role
+    target_role: Optional[str] = ""
 
 class RelevantSkillSuggestionResponse(BaseModel):
     suggested_skills: List[str]
-    rationale: List[str]  # Optional explanations
+    rationale: List[str]
 
+# --- Section Rewrite Endpoint ---
 class SectionRewriteRequest(BaseModel):
     section: str  # e.g., "WorkExperience", "Education", "Projects"
-    description: str  # The original description to be rewritten
-    resume_data: Dict[str, Any] = {}  # Optionally provide context, e.g., full resume
+    description: str
+    resume_data: Optional[Dict[str, Any]] = {}
 
 class SectionRewriteResponse(BaseModel):
     original: str
     rewritten: str
     rationale: str
-class SummaryImprovement(BaseModel):
-    improved: str
-    original_score: int
-    improved_score: int
-    explanation: str
-
-class SummaryEvaluation(BaseModel):
-    extracted_summary: str
-    ats_score: int
-    weak_sentences: List[str]
-    strong_sentences: List[str]
-    score_feedback: List[str]
-    improved_summaries: List[SummaryImprovement]
-
