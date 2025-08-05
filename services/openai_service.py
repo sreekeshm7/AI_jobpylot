@@ -107,52 +107,59 @@ Only return the JSON object. Do not include explanations or extra prose.
 
     def evaluate_summary(self, resume_data: Dict[str, Any]) -> Dict[str, Any]:
         """
-        Evaluate resume summary with ATS scoring, showcasing the literal weak sentences found in the summary.
+        Evaluate resume summary with ATS scoring, or generate 4 new summaries if there is no summary in the input.
         """
         prompt = f"""
-    You are an elite Applicant Tracking System (ATS) resume evaluator. Your job is to analyze the "Summary" section of a resume and evaluate its effectiveness for automated screening.
+    You are an elite Applicant Tracking System (ATS) resume evaluator and writer.
+    Review the provided resume data. If a summary is present, analyze and score it as instructed below. 
+    If there is **no summary, or the summary is blank**, you must compose FOUR brand-new, ATS-optimized professional summaries from scratch. Each summary should be realistic, concise (max 4 sentences), and directly based on the full experience, skills, education, and roles listed in the resume.
     
-    Resume Data:
-    {json.dumps(resume_data, indent=2)}
-    
-    Follow these steps:
+    Instructions:
     
     **Step 1:** Extract the "Summary" field from the resume *exactly as it appears*.
     
-    **Step 2:** Assign an ATS Score (0–10) to the original summary.
-    - Use criteria such as keyword density, relevance, action language, clarity, conciseness, and alignment with the full resume.
+    **Step 2:** Assign an ATS Score (0–10) to the original summary.  
+    If there is no summary, set "extracted_summary" to an empty string and "ats_score" to 0.
     
     **Step 3:** Identify Weak Sentences
-    - From the summary, list the actual sentences or sentence fragments that are vague, generic, lack measurable impact, or reduce the ATS score.
-    - In "weak_sentences", SHOW ONLY the literal sentences or direct quoted phrases as they appeared in the summary. Do NOT provide explanations, reasons, or paraphrased shortcomings here—only copy the literal text that is considered weak.
+    - From the summary, list the literal sentences or fragments that reduce ATS score (if any).
+    - If there is no summary, leave the list empty: [].
     
     **Step 4:** Identify Strong Sentences
     - From the summary, list the sentences or phrases that effectively boost ATS score, copying their literal text as they appear in the summary.
+    - If there is no summary, leave the list empty: [].
     
-    **Step 5:** Give 3–5 bullet points in "score_feedback" explaining how the score was determined, listing strengths and weaknesses as needed.
+    **Step 5:** Give 3–5 bullets in "score_feedback" explaining the ATS score.
+    - If there is no summary, explain that no summary was available, so scoring is not possible.
     
-    **Step 6:** Generate and return exactly 4 dramatically improved summaries.
-    - Each should be concise (maximum 4 sentences), realistic, not just reworded, and directly based on the candidate's true skills/experience.
-    - For each, provide:
+    **Step 6:** Compose or Improve ATS-Optimized Summaries
+    - If a summary is present, rewrite it into 4 new and improved summaries, each with:
         - "improved": the improved summary.
-        - "original_score": the ATS score (0-10) for the original summary.
-        - "improved_score": the ATS score (0-10) for this improved summary.
-        - "explanation": why the new summary's score improved (or didn't).
+        - "original_score": the ATS score (for the original).
+        - "improved_score": ATS score for this improved version.
+        - "explanation": what makes this new version better for ATS/recruiter screening.
+    - If the summary is missing/blank, analyze the entire resume and GENERATE FOUR original professional summaries. Each summary should:
+        - Use the candidate's actual experience, skills, education, and background.
+        - Fit the length and clarity requirements of top-tier resumes (max 4 sentences).
+        - Highlight slightly different strengths (technical, leadership, impact, etc).
+        - Score 9–10 for modern ATS.
+        - For each, set "original_score" to 0 and "explanation" to explain its ATS strengths.
     
     Respond ONLY in the following JSON format:
     {{
       "extracted_summary": "...",
       "ats_score": 0,
-      "weak_sentences": ["..."],         // Each element must be a LITERAL sentence or fragment copied from the summary, not an explanation or reason.
-      "strong_sentences": ["..."],       // Each element is literal text from the summary that is strong.
-      "score_feedback": ["...", "..."],
+      "weak_sentences": [...],
+      "strong_sentences": [...],
+      "score_feedback": [...],
       "improved_summaries": [
-        {{"improved": "...", "original_score": 0, "improved_score": 0, "explanation": "..."}},
-        {{"improved": "...", "original_score": 0, "improved_score": 0, "explanation": "..."}},
-        {{"improved": "...", "original_score": 0, "improved_score": 0, "explanation": "..."}},
-        {{"improved": "...", "original_score": 0, "improved_score": 0, "explanation": "..."}}
+        {{"improved": "...", "original_score": 0, "improved_score": 10, "explanation": "..."}},
+        {{"improved": "...", "original_score": 0, "improved_score": 10, "explanation": "..."}},
+        {{"improved": "...", "original_score": 0, "improved_score": 10, "explanation": "..."}},
+        {{"improved": "...", "original_score": 0, "improved_score": 10, "explanation": "..."}}
       ]
     }}
+    - If there is no input summary, synthesize the four improved_summaries as new summaries from the resume data and make them excellent ATS-ready options. Do NOT return blanks.
     """
         try:
             response = self.client.chat.completions.create(
@@ -161,24 +168,13 @@ Only return the JSON object. Do not include explanations or extra prose.
                 temperature=0.3,
                 response_format={"type": "json_object"}
             )
-            # Accept only "improved_summaries", not "new_summaries"
             result = json.loads(response.choices[0].message.content)
-            # Backwards compatibility: if "new_summaries" exists and "improved_summaries" does not, migrate over
-            if "new_summaries" in result and not result.get("improved_summaries"):
-                result["improved_summaries"] = []
-                for ns in result["new_summaries"]:
-                    result["improved_summaries"].append({
-                        "improved": ns,
-                        "original_score": result.get("ats_score", 0),
-                        "improved_score": result.get("ats_score", 0),
-                        "explanation": ""
-                    })
-                result.pop("new_summaries")
             return result
         except json.JSONDecodeError as e:
             raise Exception(f"Failed to parse OpenAI response as JSON: {str(e)}")
         except Exception as e:
             raise Exception(f"OpenAI API error: {str(e)}")
+
 
 
     def suggest_relevant_skills(self, resume_data: Dict[str, Any], target_role: str = "") -> Dict[str, Any]:
@@ -540,4 +536,5 @@ Return:
   "feedback": ["..."]
 }}
 """
+
 
