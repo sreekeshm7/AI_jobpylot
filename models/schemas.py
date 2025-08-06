@@ -220,3 +220,12 @@ class SectionRewriteResponse(BaseModel):
     original: str
     rewritten: str
     rationale: str
+class ResumeAnalysisRequest(BaseModel):
+    resume_data: Dict[str, Any]
+    job_keywords: Optional[List[str]] = None
+
+class MagicWriteRequest(BaseModel):
+    section: str
+    description: str
+    resume_data: Optional[Dict[str, Any]] = None
+
