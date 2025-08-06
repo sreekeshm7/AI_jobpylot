@@ -258,21 +258,26 @@ async def hybrid_analyze_pdf_to_json(file: UploadFile = File(...)):
         if not file.filename.lower().endswith('.pdf'):
             raise HTTPException(status_code=400, detail="Only PDF files are supported")
         
-        # Parse PDF
+        # Parse PDF to text
         resume_text = await hybrid_checker.pdf_parser.parse_pdf(file)
         if not resume_text.strip():
             raise HTTPException(status_code=400, detail="Could not extract text from PDF")
         
-        # Parse to JSON
-        resume_data = hybrid_checker.openai_service.parse_resume_to_json(resume_text)
+        # Parse to structured JSON using OpenAI
+        resume_data = hybrid_checker.pdf_parser.parse_resume_to_json(resume_text)
         
         return {
             "filename": file.filename,
+            "extraction_method": "openai_gpt35_turbo",
             "parsed_data": resume_data,
+            "text_length": len(resume_text),
             "timestamp": datetime.now().isoformat()
         }
+    
     except Exception as e:
+        logger.error(f"PDF to JSON analysis failed: {str(e)}")
         raise HTTPException(status_code=500, detail=f"PDF to JSON analysis failed: {str(e)}")
+
 
 @app.post("/hybrid/analyze-summary")
 async def hybrid_analyze_summary(file: UploadFile = File(...)):
@@ -670,4 +675,5 @@ async def get_api_info():
 
 if __name__ == "__main__":
     import uvicorn
+
     uvicorn.run(app, host="0.0.0.0", port=8001) 
